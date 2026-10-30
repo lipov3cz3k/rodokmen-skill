@@ -10,9 +10,9 @@ Použití: python3 <skill>/tools/novy_projekt.py <cílová složka> [--ukazka] [
                   novou verzi šablony jako základ; soubor v projektu nezmění a další aktualizace ho už nehlásí
 
 Vytvoří: data/ (prázdné kostry nebo ukázka), web/ (Astro web), tools/ (kopie nástrojů),
-vyrezy/, zdroje/, dokumenty/, pracovni/, CLAUDE.md, .gitignore, .gitattributes (konce řádků LF i na Windows)
-a .claude/launch.json (náhled v Claude desktop). Do .claude/settings.json doplní zákaz přímého curl/wget
-(stahování z archivů jde přes brzdu tools/slusne.py); ostatní nastavení v souboru nechá beze změny.
+vyrezy/, zdroje/, dokumenty/, pracovni/, AGENTS.md (pokyny pro agenta – Claude Code, Codex i OMP),
+.gitignore, .gitattributes (konce řádků LF i na Windows) a .claude/launch.json (náhled v Claude desktop).
+Do .claude/settings.json doplní zákaz přímého curl/wget (stahování z archivů jde přes brzdu tools/slusne.py); ostatní nastavení v souboru nechá beze změny.
 Existující data nepřepisuje.
 Do .skill_sablona/ uloží kopii šablony web/ a tools/, ze které projekt vznikl (patří do gitu s projektem).
 Aktualizace staršího projektu (znovu spustit na stejnou složku) rozhodne o každém souboru web/ a tools/ podle
@@ -24,7 +24,7 @@ pracovni/zaloha_<datum>/nova_sablona/ (u konfliktu sloučení s gitem i návrh s
 Soubor, který šablona už nemá, nemaže: hlásí ho, dokud ho nesmažete ručně a nespustíte --vyreseno. Odkazy (symlink,
 junction) mimo projekt a na místě záloh, složku místo souboru a cesty lišící se jen velikostí písmen ohlásí a přeskočí.
 Projekt bez .skill_sablona/ (ze starší verze) přepíše a původní verze změněných souborů uloží do
-pracovni/zaloha_<datum>/puvodni/.
+pracovni/zaloha_<datum>/puvodni/. Starý CLAUDE.md se přejmenuje na AGENTS.md (obsah zůstane).
 """
 import hashlib, json, os, shutil, subprocess, sys, tempfile, time
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
@@ -408,7 +408,11 @@ def main():
     for d in ("vyrezy", "zdroje", "dokumenty", "pracovni"):
         os.makedirs(os.path.join(dst, d), exist_ok=True)
     os.makedirs(os.path.join(dst, ".claude"), exist_ok=True)
-    for name in ("CLAUDE.md", ".gitignore", ".gitattributes", "poznamky_pro_skill.md", os.path.join(".claude", "launch.json")):
+    old, agents = os.path.join(dst, "CLAUDE.md"), os.path.join(dst, "AGENTS.md")
+    if os.path.isfile(old) and not os.path.islink(old) and not os.path.lexists(agents):
+        os.replace(old, agents)   # projekt ze starší verze: pokyny zůstanou, jen pod univerzálním názvem
+        print("CLAUDE.md přejmenován na AGENTS.md.")
+    for name in ("AGENTS.md", ".gitignore", ".gitattributes", "poznamky_pro_skill.md", os.path.join(".claude", "launch.json")):
         out = os.path.join(dst, name)
         if not os.path.lexists(out):
             copy(os.path.join(SKILL, "template", name), out)
