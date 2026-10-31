@@ -10,7 +10,7 @@ Použití: python3 <skill>/tools/novy_projekt.py <cílová složka> [--ukazka] [
                   novou verzi šablony jako základ; soubor v projektu nezmění a další aktualizace ho už nehlásí
 
 Vytvoří: data/ (prázdné kostry nebo ukázka), web/ (Astro web), tools/ (kopie nástrojů),
-vyrezy/, zdroje/, dokumenty/, pracovni/, AGENTS.md (pokyny pro agenta – Claude Code, Codex i OMP),
+vyrezy/, zdroje/, dokumenty/, pracovni/, AGENTS.md (pokyny pro agenta – Claude Code, Codex, OMP i Cursor),
 .gitignore, .gitattributes (konce řádků LF i na Windows) a .claude/launch.json (náhled v Claude desktop).
 Do .claude/settings.json doplní zákaz přímého curl/wget (stahování z archivů jde přes brzdu tools/slusne.py); ostatní nastavení v souboru nechá beze změny.
 Existující data nepřepisuje.
