@@ -3,16 +3,18 @@
 
 Použití: python3 <skill>/tools/novy_projekt.py <cílová složka> [--ukazka] [--hlidac | --bez-hlidace]
   --ukazka        nakopíruje i vymyšlená ukázková data (rodina Novákových), aby šel web hned vyzkoušet
-  --hlidac        zapne hlídač sítě (hook v .claude/settings.json, tools/hlidac_site.py): zamítne příkazy,
-                  které jdou na web archivu mimo brzdu tools/slusne.py; --bez-hlidace ho vypne
+  --hlidac        zapne hlídač sítě (hook v .claude/settings.json pro Claude Code a v .agents/hooks.json
+                  pro Antigravity, tools/hlidac_site.py): zamítne příkazy, které jdou na web archivu mimo brzdu
+                  tools/slusne.py; --bez-hlidace ho vypne
        python3 <skill>/tools/novy_projekt.py <složka projektu> --vyreseno <soubor> [--vyreseno <soubor> …]
   --vyreseno      po ručním převzetí změn šablony (soubor „ke kontrole“, např. web/src/pages/index.astro) uloží
                   novou verzi šablony jako základ; soubor v projektu nezmění a další aktualizace ho už nehlásí
 
 Vytvoří: data/ (prázdné kostry nebo ukázka), web/ (Astro web), tools/ (kopie nástrojů),
-vyrezy/, zdroje/, dokumenty/, pracovni/, AGENTS.md (pokyny pro agenta – Claude Code, Codex, OMP i Cursor),
-.gitignore, .gitattributes (konce řádků LF i na Windows) a .claude/launch.json (náhled v Claude desktop).
-Do .claude/settings.json doplní zákaz přímého curl/wget (stahování z archivů jde přes brzdu tools/slusne.py); ostatní nastavení v souboru nechá beze změny.
+vyrezy/, zdroje/, dokumenty/, pracovni/, AGENTS.md (pokyny pro agenta – čtou ho Codex, Cursor, Antigravity i OMP),
+CLAUDE.md (pro Claude Code, jen odkaz na AGENTS.md), .gitignore, .gitattributes (konce řádků LF i na Windows)
+a .claude/launch.json (náhled v Claude desktop). Do .claude/settings.json doplní zákaz přímého curl/wget
+(stahování z archivů jde přes brzdu tools/slusne.py); ostatní nastavení v souboru nechá beze změny.
 Existující data nepřepisuje.
 Do .skill_sablona/ uloží kopii šablony web/ a tools/, ze které projekt vznikl (patří do gitu s projektem).
 Aktualizace staršího projektu (znovu spustit na stejnou složku) rozhodne o každém souboru web/ a tools/ podle
@@ -24,7 +26,7 @@ pracovni/zaloha_<datum>/nova_sablona/ (u konfliktu sloučení s gitem i návrh s
 Soubor, který šablona už nemá, nemaže: hlásí ho, dokud ho nesmažete ručně a nespustíte --vyreseno. Odkazy (symlink,
 junction) mimo projekt a na místě záloh, složku místo souboru a cesty lišící se jen velikostí písmen ohlásí a přeskočí.
 Projekt bez .skill_sablona/ (ze starší verze) přepíše a původní verze změněných souborů uloží do
-pracovni/zaloha_<datum>/puvodni/. Starý CLAUDE.md se přejmenuje na AGENTS.md (obsah zůstane).
+pracovni/zaloha_<datum>/puvodni/. Pokyny ze starého CLAUDE.md (bez AGENTS.md) přesune do AGENTS.md.
 """
 import hashlib, json, os, shutil, subprocess, sys, tempfile, time
 for _s in (sys.stdout, sys.stderr):   # UTF-8 výstup i na Windows bez -X utf8 (cp1250 neumí třeba „→“)
@@ -336,6 +338,58 @@ def hook_hlidace():
     return {"type": "command", "command": HLIDAC, "timeout": 10}
 
 
+HOOKS_AG = os.path.join(".agents", "hooks.json")   # hooky Antigravity v projektu
+KLIC_AG = "rodokmen-hlidac-site"
+
+
+def hook_antigravity(dst):
+    """Hlídač pro Antigravity. Hooky dostanou na vstupu cestu k projektu, ale v jaké složce běží, dokumentace neříká:
+    hledat tools/ v aktuální složce i v projektu (cesta se obnoví při každé aktualizaci)."""
+    kod = ("import os,runpy;p=[q for q in (os.path.join(d,'tools','hlidac_site.py') for d in ('.',%r)) "
+           "if os.path.isfile(q)];p and runpy.run_path(p[0],run_name='__main__')" % dst.replace("\\", "/"))
+    py, volby = (_python_windows().replace("\\", "/"), "-I -X utf8") if os.name == "nt" else ("python3", "-I")
+    if " " in py:   # jen cestu s mezerou do uvozovek: příkaz začínající "…" je v PowerShellu chyba syntaxe
+        py = f'"{py}"'
+    return {"type": "command", "command": f'{py} {volby} -c "{kod}"', "timeout": 10}
+
+
+def nastaveni_antigravity(dst, zapnuty):
+    """Srovná hlídač v .agents/hooks.json s Claude Code; ostatní hooky v souboru nechá."""
+    path = os.path.join(dst, HOOKS_AG)
+    data = {}
+    if os.path.exists(path):
+        try:
+            data = json.load(open(path, encoding="utf-8"))
+        except ValueError:
+            print(f"POZOR: {path} není platný JSON – hlídač pro Antigravity jsem nenastavil. Oprav ho a spusť znovu.")
+            return
+    elif not zapnuty:
+        return
+    puvodni = json.dumps(data, sort_keys=True)
+    if zapnuty:
+        data[KLIC_AG] = {"PreToolUse": [{"matcher": "run_command", "hooks": [hook_antigravity(dst)]}]}
+    else:
+        data.pop(KLIC_AG, None)
+    if not data:   # soubor měl jen hlídače
+        os.remove(path)
+    elif json.dumps(data, sort_keys=True) != puvodni:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+
+
+def pokyny(dst):
+    """AGENTS.md čtou Codex, Cursor, Antigravity i OMP, Claude Code čte CLAUDE.md – ten jen vloží AGENTS.md (@AGENTS.md).
+    Projekt ze starší verze má pokyny (třeba pravidla pro Windows) v CLAUDE.md: přesunout je do AGENTS.md."""
+    old, agents = os.path.join(dst, "CLAUDE.md"), os.path.join(dst, "AGENTS.md")
+    odkaz = open(os.path.join(SKILL, "template", "CLAUDE.md"), encoding="utf-8").read()
+    if (os.path.isfile(old) and not os.path.islink(old) and not os.path.lexists(agents)
+            and open(old, encoding="utf-8", errors="replace").read().strip() != odkaz.strip()):
+        os.replace(old, agents)
+        print("Pokyny z CLAUDE.md přesunuty do AGENTS.md (CLAUDE.md na něj teď jen odkazuje).")
+
+
 def nastaveni(dst, hlidac):
     """Doplní do .claude/settings.json zákaz curl/wget; hlidac=True/False zapne/vypne hook, None nechá, jak je."""
     path = os.path.join(dst, ".claude", "settings.json")
@@ -367,6 +421,7 @@ def nastaveni(dst, hlidac):
             json.dump(data, f, ensure_ascii=False, indent=2)
             f.write("\n")
     zapnuty = any("hlidac_site.py" in json.dumps(h) for h in data.get("hooks", {}).get("PreToolUse", []))
+    nastaveni_antigravity(dst, zapnuty)
     print("Hlídač sítě:", "zapnutý" if zapnuty else "vypnutý (zapnout: --hlidac)")
 
 
@@ -408,11 +463,8 @@ def main():
     for d in ("vyrezy", "zdroje", "dokumenty", "pracovni"):
         os.makedirs(os.path.join(dst, d), exist_ok=True)
     os.makedirs(os.path.join(dst, ".claude"), exist_ok=True)
-    old, agents = os.path.join(dst, "CLAUDE.md"), os.path.join(dst, "AGENTS.md")
-    if os.path.isfile(old) and not os.path.islink(old) and not os.path.lexists(agents):
-        os.replace(old, agents)   # projekt ze starší verze: pokyny zůstanou, jen pod univerzálním názvem
-        print("CLAUDE.md přejmenován na AGENTS.md.")
-    for name in ("AGENTS.md", ".gitignore", ".gitattributes", "poznamky_pro_skill.md", os.path.join(".claude", "launch.json")):
+    pokyny(dst)
+    for name in ("AGENTS.md", "CLAUDE.md", ".gitignore", ".gitattributes", "poznamky_pro_skill.md", os.path.join(".claude", "launch.json")):
         out = os.path.join(dst, name)
         if not os.path.lexists(out):
             copy(os.path.join(SKILL, "template", name), out)

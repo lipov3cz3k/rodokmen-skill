@@ -47,7 +47,7 @@ Náhled spouštěj na pozadí a uživateli pošli odkaz. Vzhled si ověř sám (
 ## Zveřejnění na Netlify (výchozí, zdarma)
 1. Uživatel si založí účet na netlify.com (stačí přihlášení přes Google/GitHub) – udělá sám.
 2. Přihlášení CLI (otevře prohlížeč) – dej uživateli. V Claude Code s předponou `!`: `! cd web && npx -y netlify-cli@latest login`.
-   Kde `!` není (Cursor), dej mu do chatu blok ke zkopírování `cd web && npx -y netlify-cli@latest login` a počkej, až ho spustí sám.
+   Kde `!` není (Cursor, Antigravity), dej mu do chatu blok ke zkopírování `cd web && npx -y netlify-cli@latest login` a počkej, až ho spustí sám.
    Když `!` nejde (cloudové prostředí, nebo ho agent nemá): `npx -y netlify-cli@latest login --request "Rodokmen"` vypíše odkaz a číslo
    lístku – uživatel odkaz otevře a schválí, pak `npx -y netlify-cli@latest login --check <lístek>`.
 3. Založení webu a propojení složky (interaktivní, jednou) – dej uživateli stejně:
@@ -73,7 +73,7 @@ předtím musí vyexportovat (`cd web && npm run data`). Když náhled nenaběhn
 zkus v `launch.json` `"runtimeExecutable": "node"` a `"runtimeArgs": ["web/node_modules/astro/bin/astro.mjs", "dev", "--root", "web"]`
 (Astro 7 má spouštěč `astro.mjs`, ne `astro.js`). Server běží jen na tomto počítači – nepřidávej `--host`.
 
-V Cursoru `.claude/launch.json` náhled nespouští. Ve složce `web` spusť `npm run nahled` a pošli odkaz http://localhost:4321.
+V Cursoru a Antigravity `.claude/launch.json` náhled nespouští. Ve složce `web` spusť `npm run nahled` a pošli odkaz http://localhost:4321.
 I tady server běží jen na tomto počítači – nepřidávej `--host`.
 
 ## Vlastní server (pokročilé)

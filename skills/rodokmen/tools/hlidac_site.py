@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Hlídač síťových příkazů (volitelný hook PreToolUse v .claude/settings.json projektu).
+"""Hlídač síťových příkazů (volitelný hook PreToolUse v .claude/settings.json projektu pro Claude Code
+a v .agents/hooks.json pro Antigravity).
 
 Zapíná se příkazem `novy_projekt.py <projekt> --hlidac`, vypíná `--bez-hlidace`.
-Než Claude spustí příkaz v Bash nebo PowerShellu, hlídač zkontroluje, jestli nejde na web archivu mimo brzdu
+Než agent spustí příkaz v Bash nebo PowerShellu, hlídač zkontroluje, jestli nejde na web archivu mimo brzdu
 (tools/slusne.py): curl/wget s adresou, Python skript se síťovým importem, shellový skript s curl, v PowerShellu
 Invoke-WebRequest a podobně. Takový příkaz zamítne a Claudovi napíše, jak ho spustit přes brzdu.
 Sám nic nestahuje a nikam nic neposílá. Je to textová heuristika, ne neprůstřelná ochrana.
@@ -61,6 +62,8 @@ def posoudit(tool, cmd, cwd):
     """Vrátí důvod zamítnutí, nebo None (pustit)."""
     if tool == "Monitor":   # spouští příkaz v bashi stejně jako Bash
         tool = "Bash"
+    if tool == "run_command":   # Antigravity: shell podle systému (na Windows PowerShell), posoudit obojí
+        tool = "PowerShell"
     if tool == "PowerShell":
         if PS.search(cmd) and "slusne.py" not in cmd and not jen_volne(cmd):
             return "PowerShell stahuje z webu mimo brzdu"
@@ -96,15 +99,26 @@ def posoudit(tool, cmd, cwd):
 def main():
     try:
         vstup = json.load(sys.stdin)
-        tool = vstup.get("tool_name", "")
-        cmd = (vstup.get("tool_input") or {}).get("command", "") or ""
-        duvod = posoudit(tool, cmd, vstup.get("cwd") or os.getcwd())
+        volani = vstup.get("toolCall")   # Antigravity: {"toolCall": {"name", "args": {"CommandLine", "Cwd"}}}
+        if isinstance(volani, dict):
+            args = volani.get("args") or {}
+            tool, cmd = volani.get("name", ""), args.get("CommandLine", "") or ""
+            cwd = args.get("Cwd") or (vstup.get("workspacePaths") or [None])[0]
+        else:                            # Claude Code
+            tool = vstup.get("tool_name", "")
+            cmd = (vstup.get("tool_input") or {}).get("command", "") or ""
+            cwd = vstup.get("cwd")
+        duvod = posoudit(tool, cmd, cwd or os.getcwd())
     except Exception:          # rozbitý hlídač příkaz pustí
         return 0
     if duvod:
-        print(json.dumps({"hookSpecificOutput": {
-            "hookEventName": "PreToolUse", "permissionDecision": "deny",
-            "permissionDecisionReason": f"Hlídač sítě: {duvod}.\n{RADA}"}}))   # \uXXXX: čeština projde i v cp1250
+        zprava = f"Hlídač sítě: {duvod}.\n{RADA}"
+        if isinstance(volani, dict):
+            print(json.dumps({"decision": "deny", "reason": zprava}))
+        else:
+            print(json.dumps({"hookSpecificOutput": {
+                "hookEventName": "PreToolUse", "permissionDecision": "deny",
+                "permissionDecisionReason": zprava}}))   # \uXXXX: čeština projde i v cp1250
     return 0
 
 

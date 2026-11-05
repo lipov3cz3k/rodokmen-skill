@@ -144,6 +144,30 @@ for shell, argv in SHELLY.items():
     vse_ok &= spravne == len(PRIPADY)
     print(f"== hlídač přes {shell}: {spravne} z {len(PRIPADY)} správně")
     print("\n".join(chyby))
+# Antigravity: příkaz z .agents/hooks.json přes shell, spuštěný z jiné složky (hlídač najde projekt podle cesty
+# v příkazu), vstup {"toolCall": …} a odpověď {"decision": …}. Nástroj je jen run_command (bash i PowerShell).
+AG = novy_projekt.hook_antigravity(SKILL)["command"]
+shell_ag = [shutil.which("bash"), "-c", AG] if shutil.which("bash") and os.name != "nt" else \
+    [shutil.which("pwsh") or "powershell", "-NoProfile", "-Command", AG] if os.name == "nt" else None
+if shell_ag:
+    spravne, chyby = 0, []
+    for nastroj, prikaz, cekam in PRIPADY:
+        vstup = json.dumps({"toolCall": {"name": "run_command", "args": {"CommandLine": prikaz, "Cwd": SKILL}},
+                            "workspacePaths": [SKILL], "stepIdx": 0}, ensure_ascii=False).encode("utf-8")
+        r = subprocess.run(shell_ag, input=vstup, capture_output=True, cwd=tempfile.gettempdir())
+        try:
+            rozhodnuti = json.loads(r.stdout.decode("utf-8"))["decision"] if r.stdout.strip() else "allow"
+        except (ValueError, KeyError, UnicodeDecodeError):
+            rozhodnuti = "?"
+        vysl = Z if rozhodnuti == "deny" else P
+        ok = vysl == cekam and r.returncode == 0
+        spravne += ok
+        if not ok:
+            chyby.append(f"  [CHYBA] {nastroj:10} čekám {cekam}, je {vysl}: {prikaz.splitlines()[0][:70]}"
+                         + (f"  (kód {r.returncode})" if r.returncode else ""))
+    vse_ok &= spravne == len(PRIPADY)
+    print(f"== hlídač v Antigravity (run_command): {spravne} z {len(PRIPADY)} správně")
+    print("\n".join(chyby))
 if not SHELLY:
     print("Nenašel jsem bash ani pwsh – nic netestováno.")
 sys.exit(0 if vse_ok and SHELLY else 1)

@@ -1,4 +1,4 @@
-# Rodokmen – skill pro Claude Code, Codex a OMP
+# Rodokmen – skill pro Claude Code, Codex, OMP, Cursor a Antigravity
 
 ![Rodokmen z matrik a rodinný web – vějíř předků, mapa a zajímavosti](docs/banner.jpg)
 
@@ -48,7 +48,8 @@ s přepisem a překladem, „Co hledáme“ a deník hledání. **[Podívejte se
 
 ## Co budete potřebovat
 - **Claude Code** (aplikace pro Mac/Windows nebo příkazová řádka) a placené předplatné Claude, nebo
-  **Codex** (OpenAI), nebo **[OMP (Oh My Pi)](https://github.com/can1357/oh-my-pi)** se stejně silným modelem. Rodokmen je
+  **Codex** (OpenAI), **[OMP (Oh My Pi)](https://github.com/can1357/oh-my-pi)**, Cursor nebo **Antigravity** (Google)
+  se stejně silným modelem. Rodokmen je
   dlouhá práce – počítejte s několika večery a s tím, že spotřebuje dost kreditů. Nejlevnější tarif **Pro bude
   nejspíš málo** (stačí na vyzkoušení), na celý rodokmen počítejte aspoň s nejnižším tarifem **Max**.
   Po dokončení můžete předplatné zase snížit nebo zrušit, web i data vám zůstanou.
@@ -74,7 +75,7 @@ vyzkoušený.
 
 S jiným nebo slabším modelem počítejte s víc chybami ve čtení starého písma. V Codexu (GPT-6.1 Sol) se skill zkoušel
 na jednom skutečném rozpracovaném rodokmenu: navázal na práci, našel a zapsal nové zápisy. Celý rodokmen s ním zatím
-nevznikl a jeho čtení nikdo nesrovnal s ručním přepisem.
+nevznikl a jeho čtení nikdo nesrovnal s ručním přepisem. V Antigravity zatím vyzkoušený není.
 
 ## Instalace
 
@@ -140,11 +141,15 @@ V **Cursoru** složku `skills/rodokmen` zkopírujte do `~/.cursor/skills/rodokme
 Přes Customize → From GitHub Repository to nejde: ten postup chce `.cursor-plugin/marketplace.json` a tento repozitář má manifest pro Claude Code.
 Podrobnosti jsou v `skills/rodokmen/reference/cursor.md`.
 
+V **Antigravity** v příkazové řádce: `agy plugin install https://github.com/sarsonj/rodokmen-skill`. V aplikaci
+a editoru složku `skills/rodokmen` zkopírujte do `~/.gemini/config/skills/` (výsledek
+`~/.gemini/config/skills/rodokmen/SKILL.md`). Podrobnosti jsou v `skills/rodokmen/reference/antigravity.md`.
+
 ## První spuštění
 1. Spusťte Claude Code (klidně v domovské složce) a napište třeba:
    > Chci udělat rodokmen své rodiny.
 
-   nebo přímo `/rodokmen` (v Codexu napište `$` a vyberte rodokmen ze seznamu, v OMP `/skill:rodokmen`).
+   nebo přímo `/rodokmen` (v Codexu napište `$` a vyberte rodokmen ze seznamu, v OMP `/skill:rodokmen`, v Antigravity `/rodokmen`).
 2. Claude zkontroluje programy, založí složku projektu (např. `~/Rodokmen`) a začne se ptát na rodinu.
    Připravte si, co víte o rodičích, prarodičích a pradědečcích, a rodinné dokumenty (rodné a oddací listy, parte,
    fotky, kroniky) – stačí vyfotit mobilem.
@@ -176,6 +181,7 @@ skills/rodokmen/
   tools/             nástroje v Pythonu (ARON, výřezy, rámečky, mapa, kontrola dat, export do webu, vějíř)
   template/          šablona projektu: prázdná data, ukázková rodina, web (Astro)
 .claude-plugin/      instalace jako plugin (Claude Code, Codex i OMP)
+.antigravity-plugin/ instalace jako plugin v Antigravity
 ```
 
 ## Co umí a co ne
@@ -228,12 +234,13 @@ tady v repozitáři.
   při práci potřebuje, a Claude Code se vás na ně zeptá. Codex je pouští v sandboxu (zápis jen do složky projektu),
   OMP se ve výchozím nastavení neptá – viz doporučení níže.
   Jediná výjimka je volitelný **hlídač sítě**. Claude se na něj zeptá při zakládání projektu a bez vašeho souhlasu
-  se nezapne. Je to malý skript v projektu (`tools/hlidac_site.py`, hook v `.claude/settings.json` projektu). Před
+  se nezapne. Je to malý skript v projektu (`tools/hlidac_site.py`, hook v `.claude/settings.json` projektu, pro Antigravity v `.agents/hooks.json`;
+  v Codexu, OMP a Cursoru hlídač není). Před
   každým příkazem zkontroluje, jestli nejde na web archivu mimo brzdu, a takový příkaz zamítne. Sám nic nestahuje
   ani nikam neposílá. Vypnete ho příkazem `novy_projekt.py <projekt> --bez-hlidace`.
 - **Brzda proti zablokování archivem.** Archivy blokují IP adresu po sérii rychlých dotazů. Nástroje proto mají
   společný limit pro každý web (`tools/slusne.py`) a po varování archivu se na 30 minut zastaví. Projekt má
-  v `.claude/settings.json` zakázané přímé `curl` a `wget`, stahuje se jen přes brzdu.
+  v `.claude/settings.json` zakázané přímé `curl` a `wget` (platí jen v Claude Code), stahuje se jen přes brzdu.
 - **Kam skripty sahají:** zapisují do složky projektu rodokmenu (stažené snímky, mezivýsledky, web).
   Výjimkou jsou dočasné soubory systému, stav brzdy (pár malých souborů v `~/.cache/rodokmen_slusne`, na Windows
   v `%LOCALAPPDATA%`), mezipaměť stažených snímků (`~/.cache/rodokmen_snimky`, nejvýš 5 GB, lze kdykoli smazat),
